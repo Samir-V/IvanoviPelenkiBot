@@ -1,5 +1,6 @@
 import os
 import asyncio
+from aiohttp import web
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
@@ -714,15 +715,16 @@ def get_tasks_keyboard(level):
     return ReplyKeyboardMarkup(keyboard=buttons, resize_keyboard=True)
 
 # --- ЗАПУСК ---
-async def main():
-    runner = web.AppRunner(app)
-    await runner.setup()
-    port = int(os.environ.get("PORT", 10000))
-    site = web.TCPSite(runner, "0.0.0.0", port)
-    await site.start()
-    print(f"Web server running on port {port}")
 
-    await dp.start_polling(bot)
+async def on_startup(app):
+    asyncio.create_task(dp.start_polling(bot))
 
-if __name__ == "__main__":
-    asyncio.run(main())
+async def on_cleanup(app):
+    await bot.close()
+
+app = web.Application()
+app.on_startup.append(on_startup)
+app.on_cleanup.append(on_cleanup)
+
+PORT = int(os.environ.get("PORT", 10000))
+web.run_app(app, host="0.0.0.0", port=PORT)
