@@ -5,9 +5,18 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 
 TOKEN = os.getenv("BOT_TOKEN")
+WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")  # https://your-app.onrender.com
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = f"{WEBHOOK_HOST}{WEBHOOK_PATH}"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+
+async def handle_webhook(request):
+    data = await request.json()
+    update = types.Update(**data)
+    await dp.feed_update(bot, update)
+    return web.Response()
 
 # --- КНОПКИ ---
 main_kb = ReplyKeyboardMarkup(
@@ -717,12 +726,22 @@ def get_tasks_keyboard(level):
 # --- ЗАПУСК ---
 
 async def on_startup(app):
-    asyncio.create_task(dp.start_polling(bot))
+    # удаляем старый webhook (на всякий)
+    await bot.delete_webhook(drop_pending_updates=True)
+    
+    # ставим новый webhook
+    await bot.set_webhook(WEBHOOK_URL)
+    print(f"Webhook set to {WEBHOOK_URL}")
 
 async def on_cleanup(app):
-    await bot.close()
+    await bot.delete_webhook()
+    await bot.session.close()
 
 app = web.Application()
+
+# регистрируем маршрут webhook
+app.router.add_post(WEBHOOK_PATH, handle_webhook)
+
 app.on_startup.append(on_startup)
 app.on_cleanup.append(on_cleanup)
 
