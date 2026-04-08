@@ -18,6 +18,9 @@ async def handle_webhook(request):
     await dp.feed_update(bot, update)
     return web.Response()
 
+async def healthcheck(request):
+    return web.Response(text="OK")
+
 # --- КНОПКИ ---
 main_kb = ReplyKeyboardMarkup(
     keyboard=[
@@ -740,6 +743,7 @@ async def on_cleanup(app):
 app = web.Application()
 
 # регистрируем маршрут webhook
+app.router.add_get("/", healthcheck)
 app.router.add_post(WEBHOOK_PATH, handle_webhook)
 
 app.on_startup.append(on_startup)
